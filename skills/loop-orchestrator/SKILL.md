@@ -104,3 +104,10 @@ while (有 passes: false 的 task) 且 (current_round < max_rounds):
 - loop-journey-runner 每个 scene 最多 3 轮修复
 - 如果连续 2 个 round 的 `scenes_failed` 数量不减少 → 停止循环，报告卡住
 - orchestrator 本身不做代码修改，只负责调度和记录
+
+## ❌ 不要做的事
+
+- 不要自行修改代码——编排者只调度，不动手
+- 不要跳过失败的子 Skill——失败的环节必须重试或报告，无法绕过
+- 不要修改 PRD.json 或 JOURNEYS.json——这是合同，只能读取
+- 不要改变子 Agent 调度顺序——loop-prd-generator → loop-dev-executor → loop-journey-runner → loop-acceptance-reviewer 是固定链路

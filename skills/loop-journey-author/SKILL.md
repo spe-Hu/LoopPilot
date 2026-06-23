@@ -176,3 +176,10 @@ description: "[V3] 用户旅程脚本编写器。生成/更新 JOURNEYS.json 验
   "scenes_updated": 3
 }
 ```
+
+## ❌ 不要做的事
+
+- 不要基于主观想象写断言——断言必须来自 PRD 的 acceptance_criteria 或实际代码行为
+- 不要修改 PRD.json——只写 JOURNEYS.json，两者独立
+- 不要写无 setup 或无 teardown 的 scene——每个 scene 必须有完整的生命周期
+- 不要写与 PRD task 无关联的 scene——scene 必须服务于某个 task 的验收

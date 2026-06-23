@@ -208,3 +208,10 @@ grep '"passes_false":' Docs/PRD.json
   "report_file": "Docs/Acceptance_Report_V1.0.md"
 }
 ```
+
+## ❌ 不要做的事
+
+- 不要自行修复代码缺陷——评审者只发现问题，修复由 dev-executor 执行
+- 不要跳过第 5 阶段（PRD/JOURNEYS 强制追加）——这是核心职责，必须执行
+- 不要修改已有 passes: true 的 task——已完成的任务不可回退
+- 不要只输出报告不写入文件——发现问题必须同时写入 PRD.json 和 JOURNEYS.json

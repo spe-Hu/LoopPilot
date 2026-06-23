@@ -171,3 +171,10 @@ journey-runner 执行后输出未覆盖的 task 和孤立 scene 清单。
   "branch": "prototype-driven"
 }
 ```
+
+## ❌ 不要做的事
+
+- 不要修改已有代码文件——PRD 生成器只产出文档，不触碰实现
+- 不要基于主观想象添加功能——所有功能必须有原型/代码/用户输入作为来源
+- 不要在 PRD.json 生成后追加额外功能——生成即锁定，如需补充走新的一轮迭代
+- 不要修改 JOURNEYS.json——这是 journey-author 的职责，不是 prd-generator 的
