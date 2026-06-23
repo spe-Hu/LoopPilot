@@ -1,0 +1,149 @@
+[
+  {
+    "scene_id": "SCENE-001",
+    "scene_name": "主页加载验证",
+    "user_goal": "确认主页正常加载，核心元素可见",
+    "data_mode": "any",
+    "setup": { "description": "无需准备数据", "steps": [] },
+    "clicks_script": [
+      { "step": 1, "action": "goto", "selector": "N/A", "payload": "/" },
+      { "step": 2, "action": "assert_visible", "selector": "#task-form", "message": "任务表单必须可见" },
+      { "step": 3, "action": "assert_visible", "selector": "#task-list", "message": "任务列表区域必须存在" },
+      { "step": 4, "action": "assert_visible", "selector": "#task-input", "message": "输入框必须可见" },
+      { "step": 5, "action": "assert_no_error", "selector": "body", "message": "页面不得出现错误文本" }
+    ],
+    "teardown": { "steps": [] },
+    "fallback": { "allowed": false }
+  },
+  {
+    "scene_id": "SCENE-002",
+    "scene_name": "创建任务并验证列表更新",
+    "user_goal": "输入任务文本并提交，确认新任务出现在列表中",
+    "data_mode": "seeded",
+    "setup": {
+      "description": "确保初始状态为空列表",
+      "steps": []
+    },
+    "clicks_script": [
+      { "step": 1, "action": "goto", "selector": "N/A", "payload": "/" },
+      { "step": 2, "action": "type", "selector": "#task-input", "payload": "购买牛奶" },
+      { "step": 3, "action": "click", "selector": "#submit-btn", "payload": "N/A" },
+      { "step": 4, "action": "assert_min_count", "selector": "#task-list li", "payload": "1", "message": "提交后列表至少有 1 项" },
+      { "step": 5, "action": "assert_visible", "selector": "#task-list li:last-child", "payload": "购买牛奶", "message": "最新任务文本必须匹配输入" },
+      { "step": 6, "action": "assert_not_empty", "selector": "#task-list li:last-child", "message": "任务项内容不得为空" },
+      { "step": 7, "action": "assert_no_placeholder", "selector": "#task-list", "message": "任务列表不得包含占位符文本" },
+      { "step": 8, "action": "assert_no_error", "selector": "body", "message": "创建任务后不得出现错误" }
+    ],
+    "teardown": { "steps": [] },
+    "fallback": { "allowed": false }
+  },
+  {
+    "scene_id": "SCENE-003",
+    "scene_name": "批量创建任务验证",
+    "user_goal": "连续创建多个任务，确认列表正确累积",
+    "data_mode": "seeded",
+    "setup": {
+      "description": "通过 API 预创建 2 个任务作为初始数据",
+      "steps": [
+        { "action": "seed_api", "params": { "endpoint": "POST /api/tasks", "body": { "title": "预设任务A", "completed": false } }, "assert_response": { "status": [200, 201] } },
+        { "action": "seed_api", "params": { "endpoint": "POST /api/tasks", "body": { "title": "预设任务B", "completed": false } }, "assert_response": { "status": [200, 201] } }
+      ]
+    },
+    "clicks_script": [
+      { "step": 1, "action": "goto", "selector": "N/A", "payload": "/" },
+      { "step": 2, "action": "assert_min_count", "selector": "#task-list li", "payload": "2", "message": "初始应有 2 个预设任务" },
+      { "step": 3, "action": "type", "selector": "#task-input", "payload": "新任务C" },
+      { "step": 4, "action": "click", "selector": "#submit-btn", "payload": "N/A" },
+      { "step": 5, "action": "assert_min_count", "selector": "#task-list li", "payload": "3", "message": "创建后应有 3 个任务" },
+      { "step": 6, "action": "assert_structure", "selector": "#task-list", "payload": "每个 li 必须包含 checkbox 和文本", "message": "任务项结构完整" },
+      { "step": 7, "action": "assert_no_error", "selector": "body", "message": "批量操作后无错误" }
+    ],
+    "teardown": {
+      "steps": [
+        { "action": "cleanup_api", "params": { "endpoint": "DELETE /api/tasks/all" } }
+      ]
+    },
+    "fallback": { "allowed": true, "strategy": "seeded_data", "report_as": "DEGRADED" }
+  },
+  {
+    "scene_id": "SCENE-004",
+    "scene_name": "任务完成状态切换",
+    "user_goal": "点击 checkbox 切换任务完成状态，验证 UI 反馈",
+    "data_mode": "seeded",
+    "setup": {
+      "description": "预创建 1 个未完成任务",
+      "steps": [
+        { "action": "seed_api", "params": { "endpoint": "POST /api/tasks", "body": { "title": "待完成测试任务", "completed": false } }, "assert_response": { "status": [200, 201] } }
+      ]
+    },
+    "clicks_script": [
+      { "step": 1, "action": "goto", "selector": "N/A", "payload": "/" },
+      { "step": 2, "action": "assert_min_count", "selector": "#task-list li", "payload": "1", "message": "至少有 1 个任务" },
+      { "step": 3, "action": "click", "selector": "#task-list li:first-child input[type='checkbox']", "payload": "N/A" },
+      { "step": 4, "action": "assert_visible", "selector": "#task-list li:first-child .completed", "message": "完成后应有 completed 样式标记" },
+      { "step": 5, "action": "click", "selector": "#task-list li:first-child input[type='checkbox']", "payload": "N/A" },
+      { "step": 6, "action": "assert_visible", "selector": "#task-list li:first-child:not(.completed)", "message": "再次点击应恢复未完成状态" },
+      { "step": 7, "action": "assert_no_error", "selector": "body", "message": "状态切换不得产生错误" }
+    ],
+    "teardown": {
+      "steps": [
+        { "action": "cleanup_api", "params": { "endpoint": "DELETE /api/tasks/all" } }
+      ]
+    },
+    "fallback": { "allowed": false }
+  },
+  {
+    "scene_id": "SCENE-005",
+    "scene_name": "删除任务并验证空状态",
+    "user_goal": "删除所有任务后确认空状态提示出现",
+    "data_mode": "seeded",
+    "setup": {
+      "description": "预创建 1 个任务",
+      "steps": [
+        { "action": "seed_api", "params": { "endpoint": "POST /api/tasks", "body": { "title": "待删除任务", "completed": false } }, "assert_response": { "status": [200, 201] } }
+      ]
+    },
+    "clicks_script": [
+      { "step": 1, "action": "goto", "selector": "N/A", "payload": "/" },
+      { "step": 2, "action": "assert_min_count", "selector": "#task-list li", "payload": "1", "message": "初始有 1 个任务" },
+      { "step": 3, "action": "click", "selector": "#task-list li:first-child .delete-btn", "payload": "N/A" },
+      { "step": 4, "action": "assert_visible", "selector": "#empty-state", "payload": "暂无任务", "message": "删除后应显示空状态提示" },
+      { "step": 5, "action": "assert_not_empty", "selector": "#empty-state", "message": "空状态提示文本不得为空" },
+      { "step": 6, "action": "assert_no_error", "selector": "body", "message": "删除操作后无错误" }
+    ],
+    "teardown": {
+      "steps": [
+        { "action": "cleanup_api", "params": { "endpoint": "DELETE /api/tasks/all" } }
+      ]
+    },
+    "fallback": { "allowed": false }
+  },
+  {
+    "scene_id": "SCENE-006",
+    "scene_name": "数据导出（长时间流程）",
+    "user_goal": "触发数据导出并等待完成，确认导出结果可用",
+    "data_mode": "real",
+    "setup": {
+      "description": "预创建多个任务作为导出数据",
+      "steps": [
+        { "action": "seed_api", "params": { "endpoint": "POST /api/tasks", "body": { "title": "导出任务1", "completed": true } }, "assert_response": { "status": [200, 201] } },
+        { "action": "seed_api", "params": { "endpoint": "POST /api/tasks", "body": { "title": "导出任务2", "completed": false } }, "assert_response": { "status": [200, 201] } }
+      ]
+    },
+    "clicks_script": [
+      { "step": 1, "action": "goto", "selector": "N/A", "payload": "/" },
+      { "step": 2, "action": "click", "selector": "#export-btn", "payload": "N/A" },
+      { "step": 3, "action": "assert_visible", "selector": "#export-progress", "message": "导出按钮点击后应显示进度指示器" },
+      { "step": 4, "action": "wait_for", "selector": "#export-status", "payload": "completed", "options": { "timeout": 300, "strategy": "polling", "pollingInterval": 10, "checkpoint": true, "completionPattern": "completed" }, "message": "等待导出完成（最长 5 分钟）" },
+      { "step": 5, "action": "assert_visible", "selector": "#download-link", "message": "导出完成后应显示下载链接" },
+      { "step": 6, "action": "assert_not_empty", "selector": "#download-link", "message": "下载链接不得为空" },
+      { "step": 7, "action": "assert_no_error", "selector": "body", "message": "导出流程不得产生错误" }
+    ],
+    "teardown": {
+      "steps": [
+        { "action": "cleanup_api", "params": { "endpoint": "DELETE /api/tasks/all" } }
+      ]
+    },
+    "fallback": { "allowed": true, "strategy": "seeded_data", "report_as": "DEGRADED" }
+  }
+]
