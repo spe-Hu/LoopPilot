@@ -1,6 +1,6 @@
 ---
 name: loop-orchestrator
-description: "[V3.1] AI开发闭环主调度器。自动编排 loop-prd-generator → loop-dev-executor → loop-journey-runner → loop-acceptance-reviewer 的完整迭代循环。当用户说'帮我开发'、'自动迭代'、'loop开发'、'闭环开发'时触发。通过子Agent执行，避免上下文过长。"
+description: "[V3.2] AI开发闭环主调度器。自动编排 loop-prd-generator → loop-dev-executor → loop-journey-runner → loop-acceptance-reviewer 的完整迭代循环。当用户说'帮我开发'、'自动迭代'、'loop开发'、'闭环开发'时触发。通过子Agent执行，避免上下文过长。"
 ---
 
 # Loop Orchestrator — AI 开发闭环主调度器

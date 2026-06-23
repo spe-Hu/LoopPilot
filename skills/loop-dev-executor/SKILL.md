@@ -1,6 +1,6 @@
 ---
 name: loop-dev-executor
-description: "[V3.1] 开发执行器。按 PRD.json 逐 task 开发，通过单元测试和 E2E 冒烟测试双重验证。当用户说'开发任务'、'执行开发'、'按 PRD 开发'时触发。"
+description: "[V3.2] 开发执行器。按 PRD.json 逐 task 开发，通过单元测试和 E2E 冒烟测试双重验证。当用户说'开发任务'、'执行开发'、'按 PRD 开发'时触发。"
 ---
 
 # Dev Executor — 开发执行器
