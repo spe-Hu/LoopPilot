@@ -42,7 +42,9 @@ description: "[V3.1] AI开发闭环主调度器。自动编排 loop-prd-generato
 
 ## 迭代循环逻辑
 
-**⚠️ 关键约束**：dev_executor 和 journey_runner 是**必须连续执行**的，不能跳过 journey_runner。
+**⚠️ 关键约束**：
+- dev_executor 和 journey_runner 是**必须连续执行**的，不能跳过 journey_runner
+- **所有 task passes: true 后，必须调用 acceptance-reviewer**——这是固定链路的最后一环，不能跳过
 
 ```
 while (有 passes: false 的 task) 且 (current_round < max_rounds):
