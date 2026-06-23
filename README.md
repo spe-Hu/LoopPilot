@@ -112,6 +112,27 @@ LoopPilot/
 
 ---
 
+## ChangeLog
+
+### [V3.x] - 2026-06-22
+
+#### Phase 2 优化：dim9 反例与黑名单章节
+
+为 6 个 Skills 全部添加了 `## ❌ 不要做的事` 反例章节，明确职责边界：
+
+| Skill | 核心边界 |
+|-------|----------|
+| loop-orchestrator | 只调度不修改代码、固定链路顺序 |
+| loop-prd-generator | 只产出文档不触碰实现、生成即锁定 |
+| loop-dev-executor | 严格按 PRD.tasks 执行、不跳过测试 |
+| loop-journey-runner | 小范围 targeted fix、不修改 JOURNEYS.json |
+| loop-journey-author | 断言来自 PRD/代码、不写无关联 scene |
+| loop-acceptance-reviewer | 只发现问题不修复、强制追加 PRD/JOURNEYS |
+
+**预期效果**：dim9 评分从 0 → 3-4 分，平均分 64 → 66-67
+
+---
+
 ## License
 
 MIT
