@@ -41,13 +41,19 @@ description: "[V3] 用户旅程脚本编写器。生成/更新 JOURNEYS.json 验
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:---:|------|
 | `scene_id` | string | ✅ | 唯一标识，如 SCENE-001 |
-| `scene_name` | string | ✅ | 场景名称 |
+| `scene_name` | string | ✅ | **场景名称，不能为空** |
 | `user_goal` | string | ✅ | 用户在此场景的目标 |
 | `data_mode` | string | ✅ | "real" / "seeded" / "any" |
 | `setup` | object | ✅ | 数据播种配置（见下方） |
-| `clicks_script` | object[] | ✅ | 交互步骤数组（见下方） |
+| `clicks_script` | object[] | ✅ | **交互步骤数组，每个 step 必须有 action，必填** |
 | `teardown` | object | ✅ | 数据清理步骤 |
 | `fallback` | object | ❌ | 降级策略配置 |
+
+**⚠️ 关键约束**：
+- `clicks_script` 是**必填字段**，不能为空数组 `[]`
+- `clicks_script` 必须包含**至少一个**可执行步骤
+- `clicks_script` 中每个 step 必须有 `action` 字段
+- **文字描述（如 `description`、`steps`、`expected_result`）不能替代 `clicks_script`**
 
 ### setup / teardown 结构
 
@@ -154,12 +160,37 @@ description: "[V3] 用户旅程脚本编写器。生成/更新 JOURNEYS.json 验
 
 ## 完整性自检
 
-生成 JOURNEYS.json 后执行：
-- [ ] 每个 PRD task 的 `journey_scenes` 中的 scene_id 都存在？
-- [ ] 每个 scene 是否都有 setup（至少空对象）和 teardown？
-- [ ] 每个 scene 的 clicks_script 是否包含 L1~L4 至少各 1 个断言？
-- [ ] 涉及长时间操作的 scene 是否有 `wait_for` + `checkpoint`？
-- [ ] `data_mode: "real"` 的 scene 是否有 `fallback` 配置？
+生成 JOURNEYS.json 后执行以下检查：
+
+### 必检项（全部通过才能输出）
+
+- [ ] **clicks_script 非空**：每个 scene 的 `clicks_script` 不能为空数组
+- [ ] **scene_name 非空**：每个 scene 的 `scene_name` 不能为 null 或空字符串
+- [ ] **step.action 必填**：每个 step 必须有 `action` 字段
+- [ ] **至少一个断言**：每个 scene 的 `clicks_script` 必须包含至少 1 个 `assert_*` 类型的 action
+- [ ] **无文字替代品**：不存在只有 `description`/`steps`/`expected_result` 但没有 `clicks_script` 的 scene
+
+### 可选检查项
+
+- [ ] 每个 PRD task 的 `journey_scenes` 中的 scene_id 都存在
+- [ ] 每个 scene 是否都有 setup（至少空对象）和 teardown
+- [ ] 每个 scene 的 clicks_script 是否包含 L1~L4 至少各 1 个断言
+- [ ] 涉及长时间操作的 scene 是否有 `wait_for` + `checkpoint`
+- [ ] `data_mode: "real"` 的 scene 是否有 `fallback` 配置
+
+### 半成品场景识别与拦截
+
+以下情况视为**半成品 scene**，必须修复后才能输出：
+
+| 症状 | 原因 | 修复方式 |
+|------|------|----------|
+| `clicks_script: []` | 只有描述没有执行脚本 | 为每个 step 添加 `action` |
+| `clicks_script` 缺失 | 用 `steps` 数组代替 | 将 `steps` 文字描述转为 clicks_script 格式 |
+| `scene_name: null` | 场景命名遗漏 | 补充 scene_name |
+| 只有 `expected_result` | 用结果描述代替过程 | 拆解为具体的交互步骤 |
+| step 缺少 `action` | 结构不完整 | 为每个 step 补充 action 字段 |
+
+**如果发现半成品 scene，必须修复后再输出 JOURNEYS.json**
 
 ## 双向约束
 
@@ -173,9 +204,17 @@ description: "[V3] 用户旅程脚本编写器。生成/更新 JOURNEYS.json 验
 "journey_author": {
   "status": "completed",
   "scenes_created": 15,
-  "scenes_updated": 3
+  "scenes_updated": 3,
+  "completeness_check": {
+    "clicks_script_non_empty": true,
+    "scene_name_non_empty": true,
+    "has_assertions": true,
+    "no_text_substitutes": true
+  }
 }
 ```
+
+**注意**：只有当完整性检查全部通过后，才能更新进度为 `completed`
 
 ## ❌ 不要做的事
 
@@ -183,3 +222,5 @@ description: "[V3] 用户旅程脚本编写器。生成/更新 JOURNEYS.json 验
 - 不要修改 PRD.json——只写 JOURNEYS.json，两者独立
 - 不要写无 setup 或无 teardown 的 scene——每个 scene 必须有完整的生命周期
 - 不要写与 PRD task 无关联的 scene——scene 必须服务于某个 task 的验收
+- **不要输出半成品 scene**——clicks_script 不能为空，不能用文字描述替代可执行脚本
+- **不要跳过 scene_name**——每个 scene 必须有非空的 scene_name
