@@ -67,7 +67,7 @@ LoopPilot 是一个**模块化的 AI 开发闭环框架**，核心思想：
 git clone https://github.com/spe-Hu/LoopPilot.git
 
 # 安装 Skills (适用于 Qoder)
-cp -r LoopPilot/e2e-acceptance-skills/* ~/.agents/skills/
+cp -r LoopPilot/skills/* ~/.agents/skills/
 ```
 
 ---
@@ -100,13 +100,13 @@ cp -r LoopPilot/e2e-acceptance-skills/* ~/.agents/skills/
 
 ```
 LoopPilot/
-├── e2e-acceptance-skills/     # 核心 Skills
-│   ├── loop-orchestrator/      # 主调度器
-│   ├── loop-prd-generator/     # PRD 生成器
-│   ├── loop-dev-executor/      # 开发执行器
-│   ├── loop-journey-runner/    # 验收测试
-│   ├── loop-journey-author/    # 场景编写器
-│   └── loop-acceptance-reviewer/ # 产品评审
+├── skills/                  # 核心 Skills
+│   ├── loop-orchestrator/   # [V3] 主调度器
+│   ├── loop-prd-generator/   # [V3] PRD 生成器
+│   ├── loop-dev-executor/    # [V3] 开发执行器
+│   ├── loop-journey-runner/  # [V3] 验收测试
+│   ├── loop-journey-author/  # [V3] 场景编写器
+│   └── loop-acceptance-reviewer/ # [V3.1] 产品评审（含强制写入PRD）
 └── README.md
 ```
 

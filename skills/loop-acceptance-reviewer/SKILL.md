@@ -1,6 +1,6 @@
 ---
 name: loop-acceptance-reviewer
-description: "产品评审+迭代规划。6阶段全面评审：黑盒探索、白盒审查、UX问题分级、竞品Gap、PRD/JOURNEYS追加、人类反馈整合。当用户说'产品评审'、'做验收'、'帮我评审'时触发。"
+description: "[V3.1] 产品评审+迭代规划。6阶段全面评审：黑盒探索、白盒审查、UX问题分级、竞品Gap、**PRD/JOURNEYS强制追加**（第5阶段）、人类反馈整合。当用户说'产品评审'、'做验收'、'帮我评审'时触发。"
 ---
 
 # Acceptance Reviewer — 产品评审 + 迭代规划
