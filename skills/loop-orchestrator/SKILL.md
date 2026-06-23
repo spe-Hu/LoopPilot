@@ -42,6 +42,8 @@ description: "[V3] AI开发闭环主调度器。自动编排 loop-prd-generator 
 
 ## 迭代循环逻辑
 
+**⚠️ 关键约束**：dev_executor 和 journey_runner 是**必须连续执行**的，不能跳过 journey_runner。
+
 ```
 while (有 passes: false 的 task) 且 (current_round < max_rounds):
   1. 启动 loop-dev-executor 子 Agent
@@ -50,7 +52,8 @@ while (有 passes: false 的 task) 且 (current_round < max_rounds):
      → 更新 loop-progress.json
 
   2. 启动 loop-journey-runner 子 Agent
-     → prompt: "执行 JOURNEYS.json 中与 TASK-XXX 关联的 scene，参考 loop-journey-runner Skill 规范"
+     → prompt: "执行 Docs/JOURNEYS.json 中与 TASK-XXX 关联的 scene，参考 loop-journey-runner Skill 规范"
+     → **必须验证 scenes_passed > 0**（不能跳过）
      → 等待完成，读取验收报告
      → 更新 loop-progress.json
 

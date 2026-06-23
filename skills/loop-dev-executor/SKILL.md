@@ -39,11 +39,12 @@ description: "[V3] 开发执行器。按 PRD.json 逐 task 开发，通过单元
 - 失败 → 读取错误信息 → 修复 → 重跑，直到全绿
 
 ### 4. 冒烟闸：E2E 快速验证
-- 编写/更新 `e2e_test_command` 对应的测试文件
-- E2E 测试必须以 `page.goto(task.e2e_target_url)` 为起点
-- 断言层次：L1（元素存在）+ L2（内容非空）即可
-- 运行 `e2e_test_command`，必须退出码 0
-- 失败 → 修复前端代码 → 重跑
+
+**⚠️ 重要**：dev_executor **不得自己编写 E2E 测试文件**。
+
+E2E 验收由 `loop-journey-runner` 负责执行 `Docs/JOURNEYS.json`，不是 dev_executor 的职责。
+
+dev_executor 只做**开发**，验证由 journey_runner 负责。
 
 ### 5. 落盘
 - 更新 PRD.json：`passes: true`、`status: "completed"`
@@ -82,3 +83,4 @@ description: "[V3] 开发执行器。按 PRD.json 逐 task 开发，通过单元
 - 不要跳过单元测试或 E2E 冒烟测试——测试是验收的门槛，不是可选项
 - 不要基于「我觉得合理」修改实现方案——严格按 PRD.tasks 执行
 - 不要忽略编译/构建错误继续下一步——错误必须被修复
+- **不要自己编写 E2E 测试文件**——E2E 验收由 journey_runner 执行 JOURNEYS.json，dev_executor 只做开发
