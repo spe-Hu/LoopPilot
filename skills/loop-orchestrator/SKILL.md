@@ -45,6 +45,7 @@ description: "[V3.2] AI开发闭环主调度器。自动编排 loop-prd-generato
 **⚠️ 关键约束**：
 - dev_executor 和 journey_runner 是**必须连续执行**的，不能跳过 journey_runner
 - **所有 task passes: true 后，必须调用 acceptance-reviewer**——这是固定链路的最后一环，不能跳过
+- **loop-journey-runner 必须使用 Playwright MCP 执行真实浏览器测试**，禁止降级
 
 ```
 while (有 passes: false 的 task) 且 (current_round < max_rounds):
@@ -56,6 +57,8 @@ while (有 passes: false 的 task) 且 (current_round < max_rounds):
   2. 启动 loop-journey-runner 子 Agent
      → prompt: "执行 Docs/JOURNEYS.json 中与 TASK-XXX 关联的 scene，参考 loop-journey-runner Skill 规范"
      → **必须验证 scenes_passed > 0**（不能跳过）
+     → **必须验证 execution_method === "playwright-mcp"**（禁止降级）
+     → **必须验证 evidence 字段存在且完整**
      → 等待完成，读取验收报告
      → 更新 loop-progress.json
 
@@ -67,6 +70,39 @@ while (有 passes: false 的 task) 且 (current_round < max_rounds):
   → 读取评审报告
   → 如果有新 task 被追加 → current_round++ → 回到循环开始
   → 如果没有新 task → 输出最终报告 → 结束
+```
+
+## 子 Agent 执行证据验证
+
+**⚠️ 关键：Orchestrator 必须验证子 Agent 的执行证据，不能直接接受结论。**
+
+### loop-journey-runner 执行证据检查清单
+
+| 检查项 | 期望值 | 如果不符合 |
+|--------|--------|-----------|
+| `execution_method` | `"playwright-mcp"` | ❌ 报告降级错误，停止 |
+| `evidence.screenshots` | `> 0` | ❌ 未收集截图，报告错误 |
+| `evidence.snapshots` | `> 0` | ❌ 未收集快照，报告错误 |
+| `evidence.execution_logs` | `"完整"` | ❌ 缺少执行日志，报告错误 |
+
+**如果发现降级行为（如 `execution_method: "hybrid"` 或 `execution_method: "source-code-verification"`）：**
+
+1. **立即停止**当前迭代
+2. **报告错误**：明确指出子 Agent 违反了 Playwright MCP 强制执行声明
+3. **不更新进度**为 completed
+4. **要求用户介入**：让用户决定是否继续
+
+```
+❌ 发现降级行为！
+- 子 Agent 返回: execution_method = "hybrid"
+- 期望: execution_method = "playwright-mcp"
+- 证据: { screenshots: 0, snapshots: 0, execution_logs: "N/A" }
+
+loop-journey-runner 禁止降级为源码审查或 curl。
+请确认：
+1. 配置 Playwright MCP 环境后重试
+2. 或手动执行 Playwright 测试
+3. 或终止当前迭代
 ```
 
 ## 进度跟踪文件: `Docs/loop-progress.json`

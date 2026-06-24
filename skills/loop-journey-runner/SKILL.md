@@ -1,9 +1,32 @@
 ---
 name: loop-journey-runner
-description: "[V3] 验收测试+自动修复闭环。执行 JOURNEYS.json 全量验收，失败时自动诊断、修复代码、重测（最多3轮）。当用户说'跑验收'、'执行测试'、'验收测试'、'全量测试'时触发。"
+description: "[V3.2] 验收测试+自动修复闭环。**必须使用 Playwright MCP 执行真实浏览器测试**，禁止降级为源码审查或 curl。失败时自动诊断、修复代码、重测（最多3轮）。当用户说'跑验收'、'执行测试'、'验收测试'、'全量测试'时触发。"
 ---
 
 # Journey Runner — 验收测试 + 自动修复闭环
+
+## ⚠️ 强制执行声明
+
+**本 Skill 必须使用 Playwright MCP 执行真实的浏览器端到端测试，禁止任何降级行为。**
+
+### ❌ 禁止的降级方式
+
+| 降级方式 | 为什么禁止 |
+|---------|-----------|
+| 源码审查 (`source-code-verification`) | 只看代码，不验证运行时行为 |
+| curl API 测试 | 不验证 UI 渲染和用户交互 |
+| grep/Read 读源码 | 无法发现运行时 Bug（如事件绑定、CSS 问题）|
+| 硬编码数据 | 不是真实用户数据流 |
+
+### ✅ 唯一正确的执行方式
+
+**必须使用 Playwright MCP 工具执行完整的浏览器测试：**
+- `browser_navigate` — 打开真实页面
+- `browser_snapshot` — 获取页面状态快照
+- `browser_click` / `browser_type` — 执行真实交互
+- `screenshot` — 记录视觉证据
+
+---
 
 ## 概述
 
@@ -11,11 +34,13 @@ description: "[V3] 验收测试+自动修复闭环。执行 JOURNEYS.json 全量
 
 ## 启动流程
 
-1. 读取 `Docs/JOURNEYS.json`，获取所有 scene
-2. 检查 `Docs/loop-progress.json` 是否有上次未完成的进度
+1. **检查 Playwright MCP 是否可用** — 如果 MCP 工具不可用，立即报告错误并停止
+2. 读取 `Docs/JOURNEYS.json`，获取所有 scene
+3. 检查 `Docs/loop-progress.json` 是否有上次未完成的进度
    - 有 checkpoint → 从断点继续
    - 无 → 从头开始
-3. 确保应用已启动（`npm run dev` 或对应命令）
+4. 确保应用已启动（`npm run dev` 或对应命令）
+5. **必须通过 API 创建真实数据**（setup.steps 中的 seed_api），禁止使用硬编码示例数据
 
 ## Playwright MCP 执行方式
 
@@ -151,16 +176,33 @@ generate_report(results)
 
 ## 输出
 
-### 结构化验收报告
+### ⚠️ 执行证据要求
 
-```
+**每个 PASSED 场景必须包含以下证据之一：**
+
+| 证据类型 | 说明 | 必需 |
+|---------|------|:----:|
+| 截图 (`screenshot`) | 每个关键步骤后的页面截图 | ✅ |
+| 页面快照 (`browser_snapshot`) | 当前 DOM 结构快照 | ✅ |
+| 执行日志 | `browser_navigate` / `browser_click` 等调用记录 | ✅ |
+
+**报告示例格式：**
+
+```markdown
 # 验收报告
 执行时间: YYYY-MM-DD HH:mm
+执行方法: Playwright MCP (browser_navigate/click/snapshot)
 场景总数: N
 
 ## 结果汇总
 | 场景 | 名称 | 结果 | 轮次 | 修复次数 |
 |------|------|------|------|---------|
+
+## 执行证据
+### SCENE-001 截图证据
+- Step 1 (goto): screenshots/SCENE-001-step1.png
+- Step 3 (assert_visible): screenshots/SCENE-001-step3.png
+- 页面快照: snapshots/SCENE-001-step3.json
 
 ## 统计
 - PASS: X / N
@@ -184,6 +226,7 @@ generate_report(results)
 - 预期: ...
 - 实际: ...
 - 截图: screenshots/SCENE-XXX-step-N.png
+- 页面快照: snapshots/SCENE-XXX-step-N.json
 ```
 
 ### 覆盖审计
@@ -197,17 +240,27 @@ generate_report(results)
 ```json
 "journey_runner": {
   "status": "completed",
+  "execution_method": "playwright-mcp",
   "scenes_passed": 12,
   "scenes_failed": 2,
   "scenes_degraded": 1,
   "auto_fixes": 5,
+  "evidence": {
+    "screenshots": 30,
+    "snapshots": 45,
+    "execution_logs": "完整"
+  },
   "unresolved": ["SCENE-008", "SCENE-015"]
 }
 ```
 
 ## ❌ 不要做的事
 
-- 不要修改被测代码的无关逻辑——只修与当前断言失败相关的代码
-- 不要修改 JOURNEYS.json——它是考官，不是考生，修改它是作弊
-- 不要跳过失败的测试用例——必须诊断并修复，最多 3 轮
-- 不要引入新依赖或重构无关代码——修复必须是小范围的 targeted fix
+- **不要降级为源码审查**——必须使用 Playwright MCP 执行真实浏览器测试
+- **不要用 curl 代替浏览器测试**——curl 无法验证 UI 渲染和用户交互
+- **不要用硬编码数据代替 API 数据**——必须通过 setup.steps 的 seed_api 创建真实数据
+- **不要修改被测代码的无关逻辑**——只修与当前断言失败相关的代码
+- **不要修改 JOURNEYS.json**——它是考官，不是考生，修改它是作弊
+- **不要跳过失败的测试用例**——必须诊断并修复，最多 3 轮
+- **不要引入新依赖或重构无关代码**——修复必须是小范围的 targeted fix
+- **不要跳过证据收集**——每个 PASSED 场景必须包含截图和快照
