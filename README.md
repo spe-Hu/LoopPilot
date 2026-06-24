@@ -101,12 +101,12 @@ cp -r LoopPilot/skills/* ~/.agents/skills/
 ```
 LoopPilot/
 ├── skills/                  # 核心 Skills
-│   ├── loop-orchestrator/   # [V3] 主调度器
-│   ├── loop-prd-generator/   # [V3] PRD 生成器
-│   ├── loop-dev-executor/    # [V3] 开发执行器
-│   ├── loop-journey-runner/  # [V3] 验收测试
-│   ├── loop-journey-author/  # [V3] 场景编写器
-│   └── loop-acceptance-reviewer/ # [V3.1] 产品评审（含强制写入PRD）
+│   ├── loop-orchestrator/   # [V3.3] 主调度器（含测试完整性验证）
+│   ├── loop-prd-generator/   # [V3.2] PRD 生成器
+│   ├── loop-dev-executor/    # [V3.2] 开发执行器
+│   ├── loop-journey-runner/  # [V3.2] 验收测试（强制Playwright MCP）
+│   ├── loop-journey-author/  # [V3.2] 场景编写器
+│   └── loop-acceptance-reviewer/ # [V3.2] 产品评审（含强制写入PRD）
 └── README.md
 ```
 
@@ -114,7 +114,24 @@ LoopPilot/
 
 ## ChangeLog
 
-### [V3.x] - 2026-06-22
+### [V3.3] - 2026-06-22
+
+#### loop-orchestrator: 测试完整性验证层
+
+在 journey-runner 完成后、进入 acceptance-reviewer 之前，新增四层完整性检查：
+
+| 检查项 | 检测内容 | 失败处理 |
+|--------|---------|---------|
+| Mock 数据检测 | 代码中是否有 mock/stub/fake | ❌ 要求移除 mock |
+| 完整场景检测 | JOURNEYS.json scenes vs 实际执行数 | ❌ 要求补测 |
+| 完整点击脚本检测 | clicks_script steps vs 实际执行数 | ❌ 要求补测 |
+| API 调用验证 | PRD.integration_required task 触发 API | ❌ 要求修复集成 |
+
+**任何一层失败都阻断流程**，确保前后端真正集成测试通过才能继续。
+
+---
+
+### [V3.2] - 2026-06-22
 
 #### Phase 2 优化：dim9 反例与黑名单章节
 
@@ -130,6 +147,14 @@ LoopPilot/
 | loop-acceptance-reviewer | 只发现问题不修复、强制追加 PRD/JOURNEYS |
 
 **预期效果**：dim9 评分从 0 → 3-4 分，平均分 64 → 66-67
+
+---
+
+#### loop-journey-runner: 强制 Playwright MCP 执行
+
+- 禁止降级为源码审查或 curl
+- 必须收集截图、快照顾、执行日志
+- 子 Agent 执行证据验证
 
 ---
 
