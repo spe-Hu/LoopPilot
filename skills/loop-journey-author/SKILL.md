@@ -1,6 +1,6 @@
 ---
 name: loop-journey-author
-description: "[V3.2] 用户旅程脚本编写器。生成/更新 JOURNEYS.json 验收场景脚本，含 L1~L4 分层断言、数据播种、长时间等待。当用户说'生成测试场景'、'编写验收脚本'、'生成 JOURNEYS'时触发。"
+description: "[V3.3] 用户旅程脚本编写器。生成/更新 JOURNEYS.json 验收场景脚本，含 L1~L4 分层断言、数据播种、长时间等待。当用户说'生成测试场景'、'编写验收脚本'、'生成 JOURNEYS'时触发。"
 ---
 
 # Journey Author — 用户旅程脚本编写器

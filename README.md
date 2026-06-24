@@ -102,11 +102,11 @@ cp -r LoopPilot/skills/* ~/.agents/skills/
 LoopPilot/
 ├── skills/                  # 核心 Skills
 │   ├── loop-orchestrator/   # [V3.3] 主调度器（含测试完整性验证）
-│   ├── loop-prd-generator/   # [V3.2] PRD 生成器
-│   ├── loop-dev-executor/    # [V3.2] 开发执行器
-│   ├── loop-journey-runner/  # [V3.2] 验收测试（强制Playwright MCP）
-│   ├── loop-journey-author/  # [V3.2] 场景编写器
-│   └── loop-acceptance-reviewer/ # [V3.2] 产品评审（含强制写入PRD）
+│   ├── loop-prd-generator/   # [V3.3] PRD 生成器
+│   ├── loop-dev-executor/    # [V3.3] 开发执行器
+│   ├── loop-journey-runner/  # [V3.3] 验收测试（强制Playwright MCP）
+│   ├── loop-journey-author/  # [V3.3] 场景编写器
+│   └── loop-acceptance-reviewer/ # [V3.3] 产品评审（含强制写入PRD）
 └── README.md
 ```
 
