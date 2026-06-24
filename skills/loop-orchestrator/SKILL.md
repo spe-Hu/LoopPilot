@@ -85,25 +85,171 @@ while (有 passes: false 的 task) 且 (current_round < max_rounds):
 | `evidence.snapshots` | `> 0` | ❌ 未收集快照，报告错误 |
 | `evidence.execution_logs` | `"完整"` | ❌ 缺少执行日志，报告错误 |
 
-**如果发现降级行为（如 `execution_method: "hybrid"` 或 `execution_method: "source-code-verification"`）：**
+---
 
-1. **立即停止**当前迭代
-2. **报告错误**：明确指出子 Agent 违反了 Playwright MCP 强制执行声明
-3. **不更新进度**为 completed
-4. **要求用户介入**：让用户决定是否继续
+## 测试完整性验证层
 
+**在 loop-journey-runner 执行完成后、进入 acceptance-reviewer 之前，必须执行以下四项检查。**
+
+### 检查 1️⃣：Mock 数据检测
+
+**目的**：确保测试使用真实 API，而非 mock/stub/fake 数据。
+
+**检测方式**：
+```bash
+# 检查代码中是否有 mock 相关关键字
+grep -rn "mock\|jest.mock\|vi.mock\|sinon.stub\|fake\|axiosMock\|msw\|nock" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" src/ tests/
 ```
-❌ 发现降级行为！
-- 子 Agent 返回: execution_method = "hybrid"
-- 期望: execution_method = "playwright-mcp"
-- 证据: { screenshots: 0, snapshots: 0, execution_logs: "N/A" }
 
-loop-journey-runner 禁止降级为源码审查或 curl。
+**检查标准**：
+- 如果 `src/api/` 或 `src/services/` 中的真实 API 文件被 mock → ❌ 错误
+- 如果 `src/store/` 或 `src/context/` 中的状态管理被 mock → ❌ 错误
+- 如果只有 `tests/__mocks__/` 下的测试辅助文件被 mock → ✅ 通过
+
+**失败处理**：
+```
+❌ 发现 Mock 数据！
+- 检测到文件 {file} 中有 mock 实现
+- 这会导致真实 API 的参数错误、响应格式问题、后端 bug 无法被发现
+
 请确认：
-1. 配置 Playwright MCP 环境后重试
-2. 或手动执行 Playwright 测试
-3. 或终止当前迭代
+1. 移除 mock，启用真实 API 测试
+2. 或提供真实 API 环境配置
 ```
+
+---
+
+### 检查 2️⃣：完整场景检测
+
+**目的**：确保所有 JOURNEYS.json 中定义的场景都被执行。
+
+**检测方式**：
+```json
+// JOURNEYS.json 中的场景数量
+JOURNEYS.json scenes 总数 = N
+
+// journey-runner 报告的实际执行数量
+journey_runner 执行 scenes 数 = M
+```
+
+**检查标准**：
+- `M === N` → ✅ 全部执行
+- `M < N` → ❌ 有场景被跳过，报告哪些 scene 未执行
+
+**失败处理**：
+```
+❌ 场景执行不完整！
+- JOURNEYS.json 定义了 5 个场景
+- 实际只执行了 3 个场景
+- 未执行的场景: SCENE-002, SCENE-004
+
+请确认：
+1. 配置完整的测试环境后重试
+2. 或手动执行缺失的场景
+```
+
+---
+
+### 检查 3️⃣：完整点击脚本检测
+
+**目的**：确保每个场景的 clicks_script 中所有步骤都被执行。
+
+**检测方式**：
+```json
+// JOURNEYS.json 每个 scene 中的 clicks_script
+clicks_script 总步骤数 = K（所有 scene 的 step 总和）
+
+// journey-runner 报告的实际执行步骤数
+execution_logs 中的 step 执行数 = L
+```
+
+**检查标准**：
+- `L === K` → ✅ 全部执行
+- `L < K` → ❌ 有步骤被跳过，报告哪些 step 未执行
+
+**失败处理**：
+```
+❌ 点击脚本执行不完整！
+- 定义了 15 个点击步骤
+- 实际只执行了 10 个步骤
+- 未执行的步骤: SCENE-001/step-3, SCENE-002/step-5
+
+请确认：
+1. 检查测试环境是否正常
+2. 或重新生成 JOURNEYS.json
+```
+
+---
+
+### 检查 4️⃣：API 调用验证
+
+**目的**：确保涉及数据操作的 task 真正触发了后端 API。
+
+**检测方式**：
+```json
+// PRD.json 中 integration_required: true 的 task
+integration_required_tasks = ["TASK-002", "TASK-003", "TASK-005"]
+
+// journey-runner 报告中触发的 API 调用
+triggered_apis = ["GET /api/nodes/tree/1", "POST /api/tasks", ...]
+```
+
+**检查标准**：
+- 每个 `integration_required: true` 的 task 必须有对应的 API 被触发
+- 如果有 task 没有触发任何 API → ❌ 错误
+
+**PRD.json integration 字段格式**：
+```json
+{
+  "task_id": "TASK-003",
+  "name": "节点管理",
+  "integration_required": true,
+  "api_endpoints": ["POST /api/nodes", "GET /api/nodes/tree/{id}", "DELETE /api/nodes/{id}"]
+}
+```
+
+**失败处理**：
+```
+❌ API 调用不完整！
+- TASK-002 要求触发的 API: POST /api/nodes
+- 实际触发的 API: 无
+- TASK-002 可能使用了前端 mock 或硬编码数据
+
+请确认：
+1. 前端是否正确调用了 API
+2. API 路由是否正确实现
+3. 重新执行 journey-runner
+```
+
+---
+
+### 完整性验证流程
+
+```
+loop-journey-runner 执行完成
+    ↓
+[1] Mock 数据检测 → 通过？
+    ↓ 否 → ❌ 报告错误，要求修复
+    ↓ 是
+[2] 完整场景检测 → 通过？
+    ↓ 否 → ❌ 报告错误，要求补测
+    ↓ 是
+[3] 完整点击脚本检测 → 通过？
+    ↓ 否 → ❌ 报告错误，要求补测
+    ↓ 是
+[4] API 调用验证 → 通过？
+    ↓ 否 → ❌ 报告错误，要求修复集成
+    ↓ 是
+    ↓
+✅ 测试完整性验证通过
+    ↓
+进入 acceptance-reviewer
+```
+
+**如果任何检查失败**：
+- 不更新 `loop-progress.json` 为 completed
+- 报告具体错误详情
+- 要求用户介入或修复后重试
 
 ## 进度跟踪文件: `Docs/loop-progress.json`
 
