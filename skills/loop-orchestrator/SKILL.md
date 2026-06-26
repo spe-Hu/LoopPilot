@@ -1,6 +1,6 @@
 ---
 name: loop-orchestrator
-description: "[V3.3] AI开发闭环主调度器。自动编排 loop-prd-generator → loop-dev-executor → loop-journey-runner → loop-acceptance-reviewer 的完整迭代循环。**新增四层测试完整性验证**：Mock数据检测、完整场景检测、完整点击脚本检测、API调用验证。当用户说'帮我开发'、'自动迭代'、'loop开发'、'闭环开发'时触发。通过子Agent执行，避免上下文过长。"
+description: "[V3.4] AI开发闭环主调度器。自动编排 loop-prd-generator → loop-dev-executor → loop-journey-runner → loop-acceptance-reviewer 的完整迭代循环。**新增四层测试完整性验证**：Mock数据检测、完整场景检测、完整点击脚本检测、API调用验证。当用户说'帮我开发'、'自动迭代'、'loop开发'、'闭环开发'时触发。通过子Agent执行，避免上下文过长。"
 ---
 
 # Loop Orchestrator — AI 开发闭环主调度器
@@ -24,21 +24,70 @@ description: "[V3.3] AI开发闭环主调度器。自动编排 loop-prd-generato
 
 ## 子 Agent 调度规则
 
-### 启动子 Agent 的方式
+### ⚠️ 强制使用子 Agent
 
-使用 Agent 工具（GeneralPurpose 类型），在 prompt 中只传入：
-- 对应的 Skill 文件完整内容
-- PRD.json 中与当前 task 相关的部分（不是整个文件）
-- JOURNEYS.json 中与当前 task 关联的 scene（不是整个文件）
-- 相关代码文件路径列表
+**Orchestrator 本身不做任何开发/测试工作，所有工作必须通过子 Agent 完成。**
 
-### 子 Agent 完成后
+| 循环步骤 | 必须调用的子 Agent | Orchestrator 的职责 |
+|---------|-----------------|-------------------|
+| 生成需求 | `loop-prd-generator` | 启动、验证输出、更新进度 |
+| 开发任务 | `loop-dev-executor` | 启动、验证输出、更新进度 |
+| 执行测试 | `loop-journey-runner` | 启动、验证输出、更新进度 |
+| 产品评审 | `loop-acceptance-reviewer` | 启动、验证输出、更新进度 |
 
-1. 读取子 Agent 的返回结果
-2. 更新 `Docs/loop-progress.json` 中对应 Skill 的状态
-3. 读取更新后的 `Docs/PRD.json`，判断下一步
-4. 如果当前轮次仍有 `passes: false` → 继续启动 loop-dev-executor
-5. 如果当前轮次所有 task 都 `passes: true` → 启动 loop-acceptance-reviewer
+### 启动子 Agent 的标准 prompt 模板
+
+```
+# 启动 {SkillName} 子 Agent
+
+## 你的角色
+你是 {SkillDescription}
+
+## 参考规范
+{Skill文件完整内容}
+
+## 当前任务上下文
+### PRD.json 相关部分
+{只传入与当前 task 相关的 PRD 内容}
+
+### JOURNEYS.json 关联场景
+{只传入与当前 task 关联的 scene}
+
+### 相关代码文件
+{文件路径列表}
+
+## 执行要求
+1. 严格按照 Skill 规范执行
+2. 完成后报告：执行结果、发现的问题、需要的修复
+3. **不要跳过任何步骤**
+
+## 完成后
+返回结构化的执行报告，包含：
+- status: success/failed
+- findings: 具体发现
+- evidence: 执行证据（如截图、快照、日志）
+- next_steps: 建议的后续步骤
+```
+
+### Orchestrator 自检清单
+
+**每次启动子 Agent 前，必须确认**：
+
+- [ ] 目标 Skill 的 SKILL.md 文件存在且可读
+- [ ] PRD.json 或 JOURNEYS.json 已准备好
+- [ ] 子 Agent 的 prompt 已按模板生成
+- [ ] 预期输出格式已定义
+
+**每次子 Agent 完成后，必须验证**：
+
+| 子 Agent | 必须检查的字段 | 检查方式 |
+|----------|--------------|---------|
+| prd-generator | `tasks` 数组、`integration_required` 字段 | 读取 JSON 验证结构 |
+| dev-executor | `commits > 0`、`tests_passed` | 读取 git log 或测试报告 |
+| journey-runner | `execution_method === "playwright-mcp"`、screenshots > 0 | 读取验收报告 |
+| acceptance-reviewer | `issues_found` 数量、`new_tasks_added` | 读取评审报告 |
+
+---
 
 ## 迭代循环逻辑
 
@@ -76,14 +125,91 @@ while (有 passes: false 的 task) 且 (current_round < max_rounds):
 
 **⚠️ 关键：Orchestrator 必须验证子 Agent 的执行证据，不能直接接受结论。**
 
-### loop-journey-runner 执行证据检查清单
+### 通用验证规则
 
-| 检查项 | 期望值 | 如果不符合 |
-|--------|--------|-----------|
-| `execution_method` | `"playwright-mcp"` | ❌ 报告降级错误，停止 |
-| `evidence.screenshots` | `> 0` | ❌ 未收集截图，报告错误 |
-| `evidence.snapshots` | `> 0` | ❌ 未收集快照，报告错误 |
-| `evidence.execution_logs` | `"完整"` | ❌ 缺少执行日志，报告错误 |
+每个子 Agent 执行完成后，Orchestrator 必须：
+1. **读取返回结果** — 不能只看 status，要看具体 findings
+2. **验证结构完整性** — 报告必须包含必要字段
+3. **交叉验证** — 用其他数据源（如 git log、文件内容）验证报告的真实性
+4. **发现问题立即报告** — 不符合预期就停止，不能继续
+
+---
+
+### loop-dev-executor 检查清单
+
+| 检查项 | 期望值 | 检查方式 | 如果不符合 |
+|--------|-------|---------|-----------|
+| `status` | `"success"` 或 `"completed"` | 读取返回报告 | ❌ 报告失败，停止循环 |
+| `commits` | `> 0` | `git log --oneline` | ❌ 无提交，可能未真正开发 |
+| `tests_passed` | `true` | 读取测试报告 | ❌ 测试失败，继续修复 |
+| `files_modified` | `与 task 相关` | `git diff --stat` | ❌ 文件与 task 无关，报告错误 |
+| `implementation_matches_prd` | `true` | 抽查关键代码 | ❌ 实现不符合 PRD，打回重做 |
+
+**PRD 匹配验证**（必须随机抽查）：
+```bash
+# 检查 TASK-XXX 相关的代码是否实现了 PRD 要求的功能
+grep -n "{PRD中定义的关键方法名}" src/
+```
+
+---
+
+### loop-prd-generator 检查清单
+
+| 检查项 | 期望值 | 检查方式 | 如果不符合 |
+|--------|-------|---------|-----------|
+| `status` | `"success"` | 读取返回报告 | ❌ 生成失败，报告错误 |
+| `tasks` 数组 | `length > 0` | 读取 PRD.json | ❌ 无 task，生成失败 |
+| `integration_required` 字段 | `存在` | 检查每个 task | ❌ 缺少集成要求，无法验证 API |
+| `api_endpoints` 字段 | `存在且非空` | 检查 integration_required 的 task | ❌ 未定义 API，无法验证集成 |
+| `jorneyes_generated` | `true` 或 JOURNEYS.json 存在 | 检查文件 | ❌ JOURNEYS 未生成，流程不完整 |
+
+---
+
+### loop-journey-runner 检查清单
+
+| 检查项 | 期望值 | 检查方式 | 如果不符合 |
+|--------|-------|---------|-----------|
+| `execution_method` | `"playwright-mcp"` | 读取验收报告 | ❌ 报告降级错误，停止 |
+| `evidence.screenshots` | `> 0` | 读取验收报告 | ❌ 未收集截图，报告错误 |
+| `evidence.snapshots` | `> 0` | 读取验收报告 | ❌ 未收集快照，报告错误 |
+| `evidence.execution_logs` | `"完整"` | 读取验收报告 | ❌ 缺少执行日志，报告错误 |
+| `scenes_passed` | `> 0` 且 `scenes_passed >= scenes_total * 0.8` | 读取验收报告 | ❌ 通过率太低，需要修复 |
+
+---
+
+### loop-acceptance-reviewer 检查清单
+
+| 检查项 | 期望值 | 检查方式 | 如果不符合 |
+|--------|-------|---------|-----------|
+| `status` | `"success"` | 读取评审报告 | ❌ 评审失败，报告错误 |
+| `issues_found` | `>= 0` (可以是 0) | 读取评审报告 | ❌ 未生成报告，流程异常 |
+| `report_file` | `文件存在` | 检查 Docs/ 目录 | ❌ 报告文件不存在，生成失败 |
+
+---
+
+### 验证失败处理模板
+
+```
+❌ 子 Agent 验证失败！
+
+**子 Agent**: {AgentName}
+**预期**: {检查项} = {期望值}
+**实际**: {检查项} = {实际值}
+**报告摘要**: {子 Agent 返回的关键信息}
+
+**证据**:
+```
+{实际执行的检查命令}
+{输出结果}
+```
+
+**Orchestrator 决策**: 立即停止循环，要求修复后再继续。
+
+**建议的后续步骤**:
+1. 检查子 Agent 执行日志
+2. 修复问题后重新执行
+3. 或终止当前迭代
+```
 
 ---
 
