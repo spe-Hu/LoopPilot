@@ -1,6 +1,6 @@
 ---
 name: loop-prd-generator
-description: "[V3.3] PRD产品需求文档生成器。支持原型驱动、逆向（已有代码）、正向（从零开始）三种入口生成 PRD.json。当用户说'生成PRD'、'创建需求文档'、'从原型生成PRD'时触发。"
+description: "[V3.4] PRD产品需求文档生成器。支持原型驱动、逆向（已有代码）、正向（从零开始）三种入口生成 PRD.json。当用户说'生成PRD'、'创建需求文档'、'从原型生成PRD'时触发。"
 ---
 
 # PRD Generator — 产品需求文档生成器

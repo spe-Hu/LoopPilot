@@ -1,6 +1,6 @@
 ---
 name: loop-orchestrator
-description: "[V3.4] AI开发闭环主调度器。自动编排 loop-prd-generator → loop-dev-executor → loop-journey-runner → loop-acceptance-reviewer 的完整迭代循环。**新增四层测试完整性验证**：Mock数据检测、完整场景检测、完整点击脚本检测、API调用验证。当用户说'帮我开发'、'自动迭代'、'loop开发'、'闭环开发'时触发。通过子Agent执行，避免上下文过长。"
+description: "[V3.4] AI开发闭环主调度器。自动编排 loop-prd-generator → **loop-journey-author** → loop-dev-executor → loop-journey-runner → loop-acceptance-reviewer 的完整迭代循环。**新增四层测试完整性验证**：Mock数据检测、完整场景检测、完整点击脚本检测、API调用验证。当用户说'帮我开发'、'自动迭代'、'loop开发'、'闭环开发'时触发。通过子Agent执行，避免上下文过长。"
 ---
 
 # Loop Orchestrator — AI 开发闭环主调度器
@@ -18,8 +18,9 @@ description: "[V3.4] AI开发闭环主调度器。自动编排 loop-prd-generato
    - `Docs/PRD.json` 是否存在？
    - `Docs/JOURNEYS.json` 是否存在？
 3. **决定入口**:
-   - 两个文件都不存在 → 启动 loop-prd-generator 子 Agent
-   - 文件存在但有 `passes: false` 的 task → 直接进入开发循环
+   - PRD.json 不存在 → 启动 loop-prd-generator 子 Agent
+   - PRD.json 存在但 JOURNEYS.json 不存在 → 启动 loop-journey-author 子 Agent
+   - PRD/JOURNEYS 都存在但有 `passes: false` 的 task → 直接进入开发循环
    - 所有 task 都 `passes: true` → 启动 loop-acceptance-reviewer
 
 ## 子 Agent 调度规则
@@ -31,6 +32,7 @@ description: "[V3.4] AI开发闭环主调度器。自动编排 loop-prd-generato
 | 循环步骤 | 必须调用的子 Agent | Orchestrator 的职责 |
 |---------|-----------------|-------------------|
 | 生成需求 | `loop-prd-generator` | 启动、验证输出、更新进度 |
+| 生成验收场景 | `loop-journey-author` | 启动、验证 JOURNEYS.json 完整性 |
 | 开发任务 | `loop-dev-executor` | 启动、验证输出、更新进度 |
 | 执行测试 | `loop-journey-runner` | 启动、验证输出、更新进度 |
 | 产品评审 | `loop-acceptance-reviewer` | 启动、验证输出、更新进度 |
@@ -92,11 +94,24 @@ description: "[V3.4] AI开发闭环主调度器。自动编排 loop-prd-generato
 ## 迭代循环逻辑
 
 **⚠️ 关键约束**：
+- **PRD.json 生成后必须先调用 journey-author 生成 JOURNEYS.json**，这是开发的前置条件
 - dev_executor 和 journey_runner 是**必须连续执行**的，不能跳过 journey_runner
 - **所有 task passes: true 后，必须调用 acceptance-reviewer**——这是固定链路的最后一环，不能跳过
 - **loop-journey-runner 必须使用 Playwright MCP 执行真实浏览器测试**，禁止降级
 
+### PRD 生成后的流程
 ```
+PRD.json 生成完成
+    ↓
+启动 loop-journey-author 子 Agent
+    → prompt: "为 Docs/PRD.json 中的所有 task 生成 JOURNEYS.json 场景脚本"
+    → **必须验证 JOURNEYS.json 存在且 scene 数量 > 0**
+    → **必须验证每个 task 都有对应的 journey_scenes**
+    → 等待完成，读取结果
+    → 更新 loop-progress.json
+```
+
+### 迭代循环
 while (有 passes: false 的 task) 且 (current_round < max_rounds):
   1. 启动 loop-dev-executor 子 Agent
      → prompt: "按 Docs/PRD.json 开发 TASK-XXX，参考 loop-dev-executor Skill 规范"
@@ -161,7 +176,7 @@ grep -n "{PRD中定义的关键方法名}" src/
 | `tasks` 数组 | `length > 0` | 读取 PRD.json | ❌ 无 task，生成失败 |
 | `integration_required` 字段 | `存在` | 检查每个 task | ❌ 缺少集成要求，无法验证 API |
 | `api_endpoints` 字段 | `存在且非空` | 检查 integration_required 的 task | ❌ 未定义 API，无法验证集成 |
-| `jorneyes_generated` | `true` 或 JOURNEYS.json 存在 | 检查文件 | ❌ JOURNEYS 未生成，流程不完整 |
+| `journeys_generated` | `true` 或 JOURNEYS.json 存在 | 检查文件 | ❌ JOURNEYS 未生成，流程不完整 |
 
 ---
 
